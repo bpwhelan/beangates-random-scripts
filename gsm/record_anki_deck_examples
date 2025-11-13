@@ -1,0 +1,76 @@
+import pyautogui
+import time
+from ctypes import cast, POINTER
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioMeterInformation
+
+# --- Configuration ---
+# You can adjust these delays to your liking (in seconds)
+INITIAL_DELAY = 5      # Time to switch to the Anki window after starting the script
+WAIT_AFTER_ANSWER = 2.5 # Time to wait after showing the answer (front of the card)
+WAIT_AFTER_CARD = 2.0   # Time to wait after moving to the next card
+
+def is_audio_playing():
+    """
+    Checks if audio is currently playing on the default audio device.
+    Returns True if audio is playing, False otherwise.
+    """
+    try:
+        # Get the default audio playback device
+        devices = AudioUtilities.GetSpeakers()
+        interface = devices.Activate(IAudioMeterInformation._iid_, CLSCTX_ALL, None)
+        audio_meter = cast(interface, POINTER(IAudioMeterInformation))
+        
+        # Get the peak value of the audio meter (0.0 to 1.0)
+        # If it's greater than 0, sound is playing.
+        peak_value = audio_meter.GetPeakValue()
+        
+        # We use a small threshold to avoid detecting faint background noise
+        return peak_value > 0.001 
+    except Exception as e:
+        print(f"Could not check audio status: {e}")
+        # If we can't check, assume no audio is playing to not stall the script
+        return False
+
+# --- Main Script Logic ---
+print(f"Starting Anki slideshow in {INITIAL_DELAY} seconds...")
+print("Please switch to your Anki review window now.")
+print("To stop the script, switch back to this terminal and press CTRL+C.")
+time.sleep(INITIAL_DELAY)
+
+print("\nSlideshow started!")
+
+try:
+    while True:
+        # 1. Show the answer (first right arrow press to show back of card)
+        pyautogui.press('right')
+        print("Showing answer...")
+        
+        time.sleep(WAIT_AFTER_ANSWER)
+        
+        # 2. Wait for any audio on the card to finish playing
+        silence_duration = 0
+        check_interval = 0.1  # Check every 0.1 seconds
+        required_silence = 3.0  # Require 3 seconds of silence
+
+        while True:
+            if is_audio_playing():
+                print("...audio detected, waiting for it to finish...")
+                silence_duration = 0
+            else:
+                silence_duration += check_interval
+                if silence_duration >= required_silence:
+                    break
+            time.sleep(check_interval)
+            
+        # 3. Move to the next card (second right arrow press)
+        print("Audio finished (or was not present). Moving to next card.")
+        pyautogui.press('right')
+        
+        # 4. Wait a bit before starting the next cycle
+        time.sleep(WAIT_AFTER_CARD)
+
+except KeyboardInterrupt:
+    print("\nScript stopped by user. Goodbye!")
+except pyautogui.FailSafeException:
+    print("\nFailsafe triggered (mouse moved to a corner). Script stopped.")
