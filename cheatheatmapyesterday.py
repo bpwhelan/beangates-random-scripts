@@ -26,6 +26,7 @@ DRY_RUN = False # Set to True to only print the SQL without executing it
 CARD_ID = 1747433461669 # Only if you want to target a specific card, otherwise set to None
 # DATE_OVERRIDE = "2025-04-21" # Set to a specific date string 'YYYY-MM-DD' if needed, otherwise None
 DATE_OVERRIDE = None
+DECK_NAME = "Sentence Mining"  # Deck to search for suspended cards
 
 # --- Don't modify below this line unless you know what you're doing ---
 
@@ -46,9 +47,9 @@ def add_review_to_random_suspended_card(db_path):
             random_card_id = CARD_ID
             print(f"Using specified card ID: {random_card_id}")
         else:
-            # Find all suspended card IDs in "Sentence Mining" deck
+            # Find all suspended card IDs in the specified deck
             # queue = -1 means suspended
-            cursor.execute("SELECT id FROM cards WHERE queue = -1 AND did IN (SELECT id FROM decks WHERE name = 'Sentence Mining' COLLATE BINARY)")
+            cursor.execute(f"SELECT id FROM cards WHERE queue = -1 AND did IN (SELECT id FROM decks WHERE name = '{DECK_NAME}' COLLATE BINARY)")
             suspended_card_ids = [row[0] for row in cursor.fetchall()]
 
             print(suspended_card_ids)
